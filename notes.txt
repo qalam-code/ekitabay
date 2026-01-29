@@ -1,0 +1,68 @@
+
+===========================================================
+=  **Les défis spécifiques au Mushaf de Médine**          =
+===========================================================
+
+Les défis spécifiques au Mushaf de Médine
+    -   La Police d'écriture : Le texte Uthmani nécessite des polices spécifiques (ex: KFGQPC Uthman Taha Naskh). Assurez-vous que les ligatures ne sautent pas lors du changement de style.
+
+    -   Pagination : Si vous voulez un aspect "vrai livre", il faudra gérer les PageView. Chaque page doit calculer quels versets elle contient pour activer le surlignage.
+
+Note importante : Pour un rendu parfait "au mot près" (si vous décidez d'aller plus loin que le verset), vous devrez utiliser des coordonnées de rendu (RenderBox) pour dessiner un rectangle de couleur derrière le texte, car le texte arabe peut être complexe à segmenter.
+
+================================================
+=  **Les dépendances clés à prévoir**          =
+================================================
+
+Pour respecter cette architecture, je vous suggère d'ajouter ces packages dans votre pubspec.yaml :
+
+-   get_it : Pour l'injection de dépendances.
+-   dartz : Pour la gestion des erreurs (programmation fonctionnelle avec Either).
+-   just_audio : Pour la précision des timestamps audio.
+-   sqflite ou hive : Pour la persistance des versets en mode hors-ligne.
+
+================================================
+=  **Le flux de données (Data Flow)**          =
+================================================
+Voici ce qui se passe concrètement quand vous appuyez sur "Play" :
+
+1-) L'AudioPlayer commence à lire le fichier .mp3.
+2-) Toutes les quelques millisecondes, il envoie sa position (ex: Duration(seconds: 1, milliseconds: 200)).
+3-) Le Provider reçoit cette valeur via le positionStream.
+4-) Le Provider parcourt la liste des AyahEntity pour trouver celle où :$startTime \le position \le endTime$
+5-) S'il trouve un nouveau verset, il change state.currentAyahId et appelle notifyListeners().
+6-) Flutter redessine le RichText, et le nouveau verset change de couleur de fond.
+
+=======================================
+=           **stream audio**          =
+=======================================
+Un **stream audio**, c’est tout simplement de l’**audio diffusé en continu sur Internet**, sans que tu aies besoin de télécharger le fichier en entier avant de l’écouter 🎧
+
+### Concrètement
+
+* Le son est envoyé **par petits morceaux (flux)**
+* Tu peux **écouter immédiatement**, pendant que le reste arrive
+* Si tu coupes Internet → le son s’arrête
+
+### Exemples courants
+
+* 🎵 **Spotify, Deezer** : musique en streaming
+* 📻 **Radio en ligne**
+* 🎙️ **Podcasts** (quand tu écoutes sans télécharger)
+* 📞 **Appels VoIP** (WhatsApp, Zoom, Teams)
+
+### Streaming vs téléchargement
+
+| Streaming audio          | Téléchargement             |
+| ------------------------ | -------------------------- |
+| Lecture en direct        | Fichier complet d’abord    |
+| Connexion requise        | Écoute possible hors ligne |
+| Pas (ou peu) de stockage | Stocké sur l’appareil      |
+
+### Côté technique (rapide)
+
+* Protocoles : **HTTP, HLS, RTSP, WebRTC**
+* Formats : **MP3, AAC, Opus, OGG**
+* Peut être **live** (radio) ou **à la demande** (podcast)
+
+👉 Si tu veux, je peux t’expliquer **comment créer un stream audio**, ou la différence entre **live stream** et **on-demand**, ou encore comment ça marche **côté serveur / code**.

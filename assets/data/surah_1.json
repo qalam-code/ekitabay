@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "surah_number": 1,
+    "ayah_number": 1,
+    "text_uthmani": "﻿بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
+    "start_time": 0,
+    "end_time": 11680
+  },
+  {
+    "id": 2,
+    "surah_number": 1,
+    "ayah_number": 2,
+    "text_uthmani": "ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ",
+    "start_time": 11680,
+    "end_time": 16300
+  },
+  {
+    "id": 3,
+    "surah_number": 1,
+    "ayah_number": 3,
+    "text_uthmani": "ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
+    "start_time": 16300,
+    "end_time": 20950
+  },
+  {
+    "id": 4,
+    "surah_number": 1,
+    "ayah_number": 4,
+    "text_uthmani": "مَٰلِكِ يَوْمِ ٱلدِّينِ",
+    "start_time": 20950,
+    "end_time": 27660
+  },
+  {
+    "id": 5,
+    "surah_number": 1,
+    "ayah_number": 5,
+    "text_uthmani": "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ",
+    "start_time": 27660,
+    "end_time": 33250
+  },
+  {
+    "id": 6,
+    "surah_number": 1,
+    "ayah_number": 6,
+    "text_uthmani": "ٱهْدِنَا ٱلصِّرَٰطَ ٱلْمُسْتَقِيمَ",
+    "start_time": 33250,
+    "end_time": 33250
+  },
+  {
+    "id": 7,
+    "surah_number": 1,
+    "ayah_number": 7,
+    "text_uthmani": "صِرَٰطَ ٱلَّذِينَ أَنْعَمْتَ عَلَيْهِمْ غَيْرِ ٱلْمَغْضُوبِ عَلَيْهِمْ وَلَا ٱلضَّآلِّينَ",
+    "start_time": 33250,
+    "end_time": 46490
+  }
+]
