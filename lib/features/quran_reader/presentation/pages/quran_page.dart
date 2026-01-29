@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/quran_provider.dart';
@@ -14,42 +13,38 @@ class QuranPage extends StatefulWidget {
 }
 
 class _QuranPageState extends State<QuranPage> {
+  late PageController _pageController;
+
   @override
   void initState() {
     super.initState();
-    // Charge la sourate spécifique passée depuis la HomePage
+    _pageController = PageController();
     Future.microtask(
       () => context.read<QuranProvider>().loadSurah(widget.surahId),
     );
   }
 
-  // Fonction pour convertir les chiffres en Arabe (pour les fins de versets)
-  String _toArabicNumbers(int input) {
-    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    String str = input.toString();
-    for (int i = 0; i < english.length; i++) {
-      str = str.replaceAll(english[i], arabic[i]);
-    }
-    return str;
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFBF8), // Couleur papier crème léger
+      backgroundColor: const Color(0xFFFDFBF8),
       appBar: AppBar(
         title: Text(
           widget.surahName,
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
             color: Colors.white,
+            fontWeight: FontWeight.bold,
           ),
         ),
         backgroundColor: const Color(0xFF006437),
-        elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
       ),
       body: Consumer<QuranProvider>(
         builder: (context, provider, child) {
@@ -59,53 +54,54 @@ class _QuranPageState extends State<QuranPage> {
             );
           }
 
+          // 1. Organisation des données par page
+          final Map<int, List<dynamic>> pagesMap = {};
+          for (var ayah in provider.state.ayahs) {
+            pagesMap.putIfAbsent(ayah.page, () => []).add(ayah);
+          }
+          final pageKeys = pagesMap.keys.toList()..sort();
+
+          // 2. Synchronisation automatique du PageView avec l'audio
+          if (provider.state.currentAyahId != null) {
+            try {
+              final currentAyah = provider.state.ayahs.firstWhere(
+                (a) => a.id == provider.state.currentAyahId,
+              );
+              final targetPageIndex = pageKeys.indexOf(currentAyah.page);
+
+              if (_pageController.hasClients &&
+                  _pageController.page?.round() != targetPageIndex &&
+                  targetPageIndex != -1) {
+                Future.microtask(() {
+                  _pageController.animateToPage(
+                    targetPageIndex,
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeInOut,
+                  );
+                });
+              }
+            } catch (e) {
+              // Ayah non trouvée dans la liste actuelle
+            }
+          }
+
           return Column(
             children: [
-              // Zone de texte du Mushaf
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 30,
-                  ),
-                  child: Directionality(
-                    textDirection: TextDirection.rtl,
-                    child: RichText(
-                      textAlign: TextAlign.justify,
-                      text: TextSpan(
-                        style: const TextStyle(
-                          fontFamily: 'UthmanicHafs',
-                          fontSize: 26,
-                          color: Colors.black87,
-                          height: 2.3,
-                        ),
-                        children: provider.state.ayahs.map((ayah) {
-                          final isCurrent =
-                              provider.state.currentAyahId == ayah.id;
-
-                          return TextSpan(
-                            // Utilisation de text_uthmani et ayahNumber
-                            text:
-                                "${ayah.text} \uFD3F${_toArabicNumbers(ayah.ayahNumber)}\uFD3E ",
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () => provider.seekToAyah(ayah.id),
-                            style: TextStyle(
-                              backgroundColor: isCurrent
-                                  ? const Color(0xFF006437).withOpacity(0.2)
-                                  : Colors.transparent,
-                              fontWeight: isCurrent
-                                  ? FontWeight.w500
-                                  : FontWeight.normal,
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
+                child: PageView.builder(
+                  controller: _pageController,
+                  reverse: true,
+                  itemCount: pageKeys.length,
+                  itemBuilder: (context, index) {
+                    final pageNumber = pageKeys[index];
+                    return _buildMushafPageFrame(
+                      pagesMap[pageNumber]!,
+                      pageNumber,
+                      provider,
+                    );
+                  },
                 ),
               ),
-
-              // Barre de contrôle audio
               _buildControlBar(provider),
             ],
           );
@@ -114,75 +110,183 @@ class _QuranPageState extends State<QuranPage> {
     );
   }
 
+  Widget _buildMushafPageFrame(
+    List<dynamic> ayahs,
+    int pageNumber,
+    QuranProvider provider,
+  ) {
+    final bool isFirstPageOfSurah = ayahs.any((a) => a.ayahNumber == 1);
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFFB8965B), width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFB8965B), width: 1),
+        ),
+        child: Column(
+          children: [
+            _buildPageHeader(ayahs.first.surahNumber, pageNumber),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        if (isFirstPageOfSurah)
+                          _buildBismillah(ayahs.first.surahNumber),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 0,
+                          runSpacing: 12,
+                          children: ayahs.map((ayah) {
+                            final isCurrent =
+                                provider.state.currentAyahId == ayah.id;
+                            return _buildAyahItem(ayah, isCurrent, provider);
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                _toArabicNumbers(pageNumber),
+                style: const TextStyle(
+                  fontFamily: 'UthmanicHafs',
+                  fontSize: 16,
+                  color: Color(0xFFB8965B),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAyahItem(dynamic ayah, bool isCurrent, QuranProvider provider) {
+    return GestureDetector(
+      onTap: () => provider.seekToAyah(ayah.id),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: isCurrent
+              ? const Color(0xFF006437).withOpacity(0.12)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: "${ayah.text_uthmani} ",
+                style: const TextStyle(
+                  fontFamily: 'UthmanicHafs',
+                  fontSize: 24,
+                  height: 2.2,
+                  color: Colors.black,
+                ),
+              ),
+              TextSpan(
+                text: "\uFD3F${_toArabicNumbers(ayah.ayahNumber)}\uFD3E ",
+                style: const TextStyle(
+                  fontFamily: 'UthmanicHafs',
+                  fontSize: 20,
+                  color: Color(0xFFB8965B),
+                ),
+              ),
+            ],
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBismillah(int surahNumber) {
+    if (surahNumber == 1 || surahNumber == 9) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 15),
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4EDE2).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFB8965B).withOpacity(0.3)),
+      ),
+      child: const Text(
+        "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ",
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontFamily: 'UthmanicHafs',
+          fontSize: 24,
+          color: Colors.black87,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageHeader(int surahNum, int pageNum) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      decoration: const BoxDecoration(color: Color(0xFFF4EDE2)),
+      child: Text(
+        "Sūrat ${widget.surahName}",
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Color(0xFF8B6E3D),
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+
   Widget _buildControlBar(QuranProvider provider) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
+      height: 100,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, -5),
+            offset: const Offset(0, -2),
           ),
         ],
       ),
-      child: SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Affichage du verset actuel
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  "VERSET",
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                Text(
-                  _toArabicNumbers(provider.state.currentAyahId ?? 1),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF006437),
-                  ),
-                ),
-              ],
-            ),
-
-            // Bouton Play/Pause
-            GestureDetector(
-              onTap: () => provider.playPause(),
-              child: Container(
-                height: 60,
-                width: 60,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF006437),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  provider.audioPlayer.playing
-                      ? Icons.pause_rounded
-                      : Icons.play_arrow_rounded,
-                  size: 40,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-
-            // Bouton pour revenir à la liste
-            IconButton(
-              icon: const Icon(Icons.format_list_bulleted, color: Colors.grey),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
+      child: Center(
+        child: IconButton(
+          icon: Icon(
+            provider.audioPlayer.playing
+                ? Icons.pause_circle_filled
+                : Icons.play_circle_filled,
+          ),
+          iconSize: 64,
+          color: const Color(0xFF006437),
+          onPressed: provider.playPause,
         ),
       ),
     );
+  }
+
+  String _toArabicNumbers(int input) {
+    const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    return input.toString().split('').map((e) => arabic[int.parse(e)]).join();
   }
 }

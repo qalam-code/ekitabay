@@ -1,11 +1,11 @@
 name: ekitabay
-description: "Application Mushaf Al-Madinah avec synchronisation audio."
+description: "Application Mushaf Al-Madinah avec synchronisation audio verset par verset."
 publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  sdk: '>=3.2.0 <4.0.0' # Plus flexible pour éviter les conflits de versions
 
 dependencies:
   flutter:
@@ -13,25 +13,29 @@ dependencies:
   cupertino_icons: ^1.0.8
   
   # State Management & DI
-  get_it: ^9.2.0
-  provider: ^6.1.5+1
+  get_it: ^7.7.0 # Version stable largement utilisée
+  provider: ^6.1.2
   
-  # Audio & Collections
+  # Audio
   just_audio: ^0.10.5
-  collection: ^1.19.1
-
+  
+  # Réseau & Cache
   http: ^1.2.0
+  flutter_cache_manager: ^3.3.2
+  path_provider: ^2.1.2 # Nécessaire pour localiser les dossiers de stockage
+
+  # Utilitaires
+  collection: ^1.18.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^3.0.0
   flutter_native_splash: ^2.3.1
 
 # Configuration du Splash Screen
 flutter_native_splash:
   color: "#FFFFFF"
-  # Assurez-vous d'avoir une image à ce chemin ou modifiez-le
   image: assets/splash/logo.png
   android: true
   ios: true
@@ -44,7 +48,7 @@ flutter:
   assets:
     - assets/data/
     - assets/fonts/
-    # - assets/splash/ # Décommentez si vous y mettez votre logo
+    - assets/splash/logo.png
 
   fonts:
     - family: UthmanicHafs

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:collection/collection.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import '../../domain/entities/ayah_entity.dart';
 import '../../domain/usecases/get_surah_usecase.dart';
 import 'quran_state.dart';
 
@@ -12,78 +13,62 @@ class QuranProvider extends ChangeNotifier {
   QuranState get state => _state;
 
   QuranProvider({required this.getSurahUseCase, required this.audioPlayer}) {
-    _initAudioListener();
+    _initAudioListeners();
   }
 
-  void _initAudioListener() {
-    // Écoute la position de l'audio pour le surlignage
-    audioPlayer.positionStream.listen((position) {
-      _updateHighlight(position);
+  void _initAudioListeners() {
+    // Synchronise le surlignage avec l'index de la playlist
+    audioPlayer.currentIndexStream.listen((index) {
+      if (index != null && _state.ayahs.isNotEmpty) {
+        final currentAyah = _state.ayahs[index];
+        _state = _state.copyWith(currentAyahId: currentAyah.id);
+        notifyListeners();
+      }
     });
 
-    // Écoute l'état de lecture (pour mettre à jour l'icône Play/Pause automatiquement)
-    audioPlayer.playerStateStream.listen((playerState) {
-      notifyListeners();
-    });
+    // Notifie les changements d'état (play/pause) pour l'UI
+    audioPlayer.playerStateStream.listen((_) => notifyListeners());
   }
 
   Future<void> loadSurah(int surahNumber) async {
-    // 1. Reset l'état et arrêter l'audio précédent
-    if (audioPlayer.playing) await audioPlayer.stop();
-
-    _state = _state.copyWith(
-      isLoading: true,
-      currentAyahId: null, // Reset du surlignage
-      ayahs: [],
-    );
+    _state = _state.copyWith(isLoading: true, ayahs: []);
     notifyListeners();
 
     try {
-      // 2. Charger les données JSON via le UseCase
-      final result = await getSurahUseCase.execute(surahNumber);
+      final ayahs = await getSurahUseCase.execute(surahNumber);
 
-      // 3. Formater le numéro de sourate en 3 chiffres (ex: 1 -> 001)
-      String audioId = surahNumber.toString().padLeft(3, '0');
+      // Préparation des sources audio avec Cache intelligent
+      List<AudioSource> audioSources = [];
+      for (var ayah in ayahs) {
+        // Vérifie si le fichier est déjà en cache, sinon LockCaching le télécharge pendant l'écoute
+        audioSources.add(LockCachingAudioSource(Uri.parse(ayah.audioUrl)));
+      }
 
-      // 4. Configurer l'URL audio dynamique (Recitateur Al-Afasy)
-      await audioPlayer.setUrl(
-        "https://download.quranicaudio.com/qdc/mishari_rashid_al_afasy/murattal/$audioId.mp3",
+      // Utilisation de la méthode non-dépréciée pour définir la playlist
+      final playlist = ConcatenatingAudioSource(
+        useLazyPreparation: true,
+        children: audioSources,
       );
 
-      _state = _state.copyWith(ayahs: result, isLoading: false);
+      await audioPlayer.setAudioSource(playlist);
+
+      _state = _state.copyWith(ayahs: ayahs, isLoading: false);
       notifyListeners();
     } catch (e) {
-      debugPrint("Erreur chargement sourate: $e");
       _state = _state.copyWith(isLoading: false);
       notifyListeners();
-    }
-  }
-
-  void _updateHighlight(Duration currentPosition) {
-    // On cherche l'ayah dont l'intervalle startTime/endTime englobe la position actuelle
-    final activeAyah = _state.ayahs.firstWhereOrNull(
-      (a) => currentPosition >= a.startTime && currentPosition <= a.endTime,
-    );
-
-    if (activeAyah != null && activeAyah.id != _state.currentAyahId) {
-      _state = _state.copyWith(currentAyahId: activeAyah.id);
-      notifyListeners();
+      debugPrint("Erreur chargement sourate: $e");
     }
   }
 
   void playPause() {
-    if (audioPlayer.playing) {
-      audioPlayer.pause();
-    } else {
-      audioPlayer.play();
-    }
-    // notifyListeners() est déjà appelé par le playerStateStream
+    audioPlayer.playing ? audioPlayer.pause() : audioPlayer.play();
   }
 
   void seekToAyah(int ayahId) {
-    final target = _state.ayahs.firstWhereOrNull((a) => a.id == ayahId);
-    if (target != null) {
-      audioPlayer.seek(target.startTime);
+    final index = _state.ayahs.indexWhere((a) => a.id == ayahId);
+    if (index != -1) {
+      audioPlayer.seek(Duration.zero, index: index);
       audioPlayer.play();
     }
   }
