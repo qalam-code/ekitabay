@@ -7,7 +7,6 @@ import 'package:ekitabay/injection_container.dart';
 void main() async {
   // Indispensable pour l'accès aux assets et aux plugins (Audio/PathProvider)
   WidgetsFlutterBinding.ensureInitialized();
-
   // Initialisation du Service Locator (GetIt)
   await init();
 

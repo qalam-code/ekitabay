@@ -27,6 +27,8 @@ dependencies:
   # Utilitaires
   collection: ^1.18.0
 
+  wakelock_plus: ^1.2.8
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

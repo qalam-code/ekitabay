@@ -8,12 +8,19 @@ import 'quran_state.dart';
 class QuranProvider extends ChangeNotifier {
   final GetSurahUseCase getSurahUseCase;
   final AudioPlayer audioPlayer;
+  double _fontSize = 22.0; // Taille par défaut
+  double get fontSize => _fontSize;
 
   QuranState _state = QuranState();
   QuranState get state => _state;
 
   QuranProvider({required this.getSurahUseCase, required this.audioPlayer}) {
     _initAudioListeners();
+  }
+
+  void updateFontSize(double newSize) {
+    _fontSize = newSize;
+    notifyListeners();
   }
 
   void _initAudioListeners() {
@@ -77,5 +84,24 @@ class QuranProvider extends ChangeNotifier {
   void dispose() {
     audioPlayer.dispose();
     super.dispose();
+  }
+
+  void nextAyah() {
+    if (audioPlayer.hasNext) {
+      audioPlayer.seekToNext();
+    }
+  }
+
+  void previousAyah() {
+    if (audioPlayer.hasPrevious) {
+      audioPlayer.seekToPrevious();
+    }
+  }
+
+  void stopAudio() {
+    audioPlayer.stop();
+    _state = _state.copyWith(
+        currentAyahId: null); // Optionnel : enlève le surlignage
+    notifyListeners();
   }
 }
